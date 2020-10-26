@@ -88,7 +88,7 @@ RUN pip install 'notebook==6.1.4' \
     fix-permissions /home/$NB_USER
 
 # Install all OS dependencies for fully functional notebook server
-COPY sources.list /etc/apt/sources.list
+#COPY sources.list /etc/apt/sources.list
 RUN apt-get update --fix-missing && apt-get install -yq --no-install-recommends \
     build-essential \
     emacs-nox \
