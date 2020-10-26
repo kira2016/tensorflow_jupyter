@@ -78,6 +78,8 @@ RUN chmod +x /usr/local/bin/tini
 ADD node-v12.19.0-linux-x64/ /usr/local/ 
 RUN fix-permissions /usr/local/
 
+RUN /usr/bin/python3 -m pip install --upgrade pip
+
 RUN pip install 'notebook==6.1.4' \
     'jupyterhub==1.1.0' \
     'jupyterlab==2.2.8' && \
@@ -119,7 +121,6 @@ RUN apt-get update && \
     rm -rf /var/lib/apt/lists/*
 
 # Install Python 3 packages
-RUN /usr/bin/python3 -m pip install --upgrade pip
 RUN pip install -i https://mirrors.aliyun.com/pypi/simple/ \
     'beautifulsoup4==4.9.*' \
     'bokeh==2.2.*' \
