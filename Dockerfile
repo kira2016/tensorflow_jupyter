@@ -156,7 +156,7 @@ RUN pip install -i https://mirrors.aliyun.com/pypi/simple/ \
     jupyter labextension install @jupyter-widgets/jupyterlab-manager@^2.0.0 --no-build && \
     jupyter labextension install @bokeh/jupyter_bokeh@^2.0.0 --no-build && \
     jupyter labextension install jupyter-matplotlib@^0.7.2 --no-build && \
-    jupyter lab build -y && \
+    jupyter lab build --dev-build=False --minimize=False -y && \
     jupyter lab clean -y && \
     rm -rf "/home/${NB_USER}/.cache/yarn" && \
     rm -rf "/home/${NB_USER}/.node-gyp" && \
