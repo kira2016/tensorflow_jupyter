@@ -148,16 +148,15 @@ RUN pip install -i https://mirrors.aliyun.com/pypi/simple/ \
     'xlrd==1.2.*' 
 
     # Activate ipywidgets extension in the environment that runs the notebook server
- RUN jupyter nbextension enable --py widgetsnbextension --sys-prefix && \
+ RUN jupyter nbextension enable --py widgetsnbextension --sys-prefix
     # Also activate ipywidgets extension for JupyterLab
     # Check this URL for most recent compatibilities
     # https://github.com/jupyter-widgets/ipywidgets/tree/master/packages/jupyterlab-manager
 
-    jupyter labextension install @jupyter-widgets/jupyterlab-manager@^2.0.0 --no-build && \
-    jupyter labextension install @bokeh/jupyter_bokeh@^2.0.0 --no-build && \
-    jupyter labextension install jupyter-matplotlib@^0.7.2 --no-build && \
-    jupyter lab build --dev-build=False --minimize=False -y && \
-    jupyter lab clean -y && \
+ RUN   jupyter labextension install @jupyter-widgets/jupyterlab-manager@^2.0.0
+ RUN   jupyter labextension install @bokeh/jupyter_bokeh@^2.0.0
+ RUN   jupyter labextension install jupyter-matplotlib@^0.7.2
+ RUN   jupyter lab clean -y && \
     rm -rf "/home/${NB_USER}/.cache/yarn" && \
     rm -rf "/home/${NB_USER}/.node-gyp" && \
     fix-permissions "/home/${NB_USER}"
