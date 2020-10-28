@@ -182,7 +182,6 @@ RUN fix-permissions /etc/jupyter/ \
 && chmod +x /usr/local/bin/*.sh
 
 RUN cd /usr/local/share/jupyter/lab/static \
- && mv vendors~main.49243045c533b9acaa14.js vendors~main.49243045c533b9acaa14.js.bak \
  && mv index.html index.html.bak
 
 COPY index.html vendors~main.49243045c533b9acaa14.js /usr/local/share/jupyter/lab/static/
