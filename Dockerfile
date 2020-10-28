@@ -1,8 +1,12 @@
 # Copyright (c) Jupyter Development Team.
 # Distributed under the terms of the Modified BSD License.
 
-ARG ROOT_CONTAINER=tensorflow/tensorflow:1.15.4
-
+# Ubuntu 20.04 (focal)
+# https://hub.docker.com/_/ubuntu/?tab=tags&name=focal
+# OS/ARCH: linux/amd64
+#ARG ROOT_CONTAINER=ubuntu:focal-20200916@sha256:028d7303257c7f36c721b40099bf5004a41f666a54c0896d5f229f1c0fd99993
+#ARG ROOT_CONTAINER=nvidia/cuda:10.0-cudnn7-runtime-ubuntu18.04 
+ARG ROOT_CONTAINER=tensorflow/tensorflow:1.14.0-py3
 ARG BASE_CONTAINER=$ROOT_CONTAINER
 FROM $BASE_CONTAINER
 
@@ -19,7 +23,8 @@ USER root
 # Install all OS dependencies for notebook server that starts but lacks all
 # features (e.g., download as all possible file formats)
 ENV DEBIAN_FRONTEND noninteractive
-RUN apt-get update \
+
+RUN	apt-get update \
  && apt-get install -yq --no-install-recommends \
     wget \
     bzip2 \
@@ -28,71 +33,12 @@ RUN apt-get update \
     locales \
     fonts-liberation \
     run-one \
-    apt-utils \
-    python-tables \
- && apt-get clean && rm -rf /var/lib/apt/lists/*
-
-RUN echo "en_US.UTF-8 UTF-8" > /etc/locale.gen && \
-    locale-gen
-
-# Configure environment
-ENV  SHELL=/bin/bash \
-    NB_USER=$NB_USER \
-    NB_UID=$NB_UID \
-    NB_GID=$NB_GID \
-    LC_ALL=en_US.UTF-8 \
-    LANG=en_US.UTF-8 \
-    LANGUAGE=en_US.UTF-8
-ENV HOME=/home/$NB_USER
-
-# Copy a script that we will use to correct permissions after running certain commands
-COPY fix-permissions /usr/local/bin/fix-permissions
-RUN chmod a+rx /usr/local/bin/fix-permissions
-
-# Enable prompt color in the skeleton .bashrc before creating the default NB_USER
-# hadolint ignore=SC2016
-RUN sed -i 's/^#force_color_prompt=yes/force_color_prompt=yes/' /etc/skel/.bashrc && \
-   # Add call to conda init script see https://stackoverflow.com/a/58081608/4413446
-   echo 'eval "$(command conda shell.bash hook 2> /dev/null)"' >> /etc/skel/.bashrc 
-
-# Create NB_USER with name jovyan user with UID=1000 and in the 'users' group
-# and make sure these dirs are writable by the `users` group.
-RUN echo "auth requisite pam_deny.so" >> /etc/pam.d/su && \
-    sed -i.bak -e 's/^%admin/#%admin/' /etc/sudoers && \
-    sed -i.bak -e 's/^%sudo/#%sudo/' /etc/sudoers && \
-    useradd -m -s /bin/bash -N -u $NB_UID $NB_USER && \
-    chmod g+w /etc/passwd && \
-    fix-permissions $HOME 
-
-# Setup work directory for backward-compatibility
-RUN mkdir /home/$NB_USER/work && \
-    fix-permissions /home/$NB_USER
-
-# Install Tini
-ENV TINI_VERSION v0.18.0
-#ADD https://github.com/krallin/tini/releases/download/${TINI_VERSION}/tini /usr/local/bin/tini
-COPY tini /usr/local/bin/tini
-RUN chmod +x /usr/local/bin/tini
-
-#installl nodejs
-ADD node-v12.19.0-linux-x64/ /usr/local/ 
-RUN fix-permissions /usr/local/
-
-RUN /usr/bin/python3 -m pip install --upgrade pip
-
-RUN pip install 'notebook==6.1.4' \
-    'jupyterhub==1.1.0' \
-    'jupyterlab==2.2.8' && \
-    npm cache clean --force && \
-    jupyter notebook --generate-config && \
-    fix-permissions /home/$NB_USER
-
-# Install all OS dependencies for fully functional notebook server
-COPY sources.list /etc/apt/sources.list
-RUN apt-get update --fix-missing && apt-get install -yq --no-install-recommends \
     build-essential \
     emacs-nox \
     vim-tiny \
+    python-tables
+
+RUN apt-get install -yq --no-install-recommends \    
     git \
     inkscape \
     jed \
@@ -109,19 +55,65 @@ RUN apt-get update --fix-missing && apt-get install -yq --no-install-recommends 
     # ----
     tzdata \
     unzip \
-    nano-tiny \
-    && apt-get clean && rm -rf /var/lib/apt/lists/*
+    ffmpeg dvipng cm-super \
+ && apt-get clean && rm -rf /var/lib/apt/lists/*
 
-# Create alternative for nano -> nano-tiny
-RUN update-alternatives --install /usr/bin/nano nano /bin/nano-tiny 10
+RUN echo "en_US.UTF-8 UTF-8" > /etc/locale.gen && \
+    locale-gen
 
-# ffmpeg for matplotlib anim & dvipng+cm-super for latex labels
-RUN apt-get update && \
-    apt-get install -y --no-install-recommends ffmpeg dvipng cm-super && \
-    rm -rf /var/lib/apt/lists/*
+# Configure environment
+ENV SHELL=/bin/bash \
+    NB_USER=$NB_USER \
+    NB_UID=$NB_UID \
+    NB_GID=$NB_GID \
+    LC_ALL=en_US.UTF-8 \
+    LANG=en_US.UTF-8 \
+    LANGUAGE=en_US.UTF-8
+
+ENV HOME=/home/$NB_USER
+
+# Enable prompt color in the skeleton .bashrc before creating the default NB_USER
+# hadolint ignore=SC2016
+RUN sed -i 's/^#force_color_prompt=yes/force_color_prompt=yes/' /etc/skel/.bashrc 
+
+#Copy a script that we will use to correct permissions after running certain commands
+COPY fix-permissions /usr/local/bin/fix-permissions
+RUN chmod a+rx /usr/local/bin/fix-permissions
+
+# Create NB_USER with name jovyan user with UID=1000 and in the 'users' group
+# and make sure these dirs are writable by the `users` group.
+RUN echo "auth requisite pam_deny.so" >> /etc/pam.d/su && \
+    sed -i.bak -e 's/^%admin/#%admin/' /etc/sudoers && \
+    sed -i.bak -e 's/^%sudo/#%sudo/' /etc/sudoers && \
+    useradd -m -s /bin/bash -N -u $NB_UID $NB_USER && \
+    chmod g+w /etc/passwd && \
+    fix-permissions $HOME
+
+
+WORKDIR $HOME
+
+# Setup work directory for backward-compatibility
+RUN mkdir /home/$NB_USER/work && \
+    fix-permissions /home/$NB_USER
+
+# Install conda as jovyan and check the md5 sum provided on the download site
+
+# Install Jupyter Notebook, Lab, and Hub
+# Generate a notebook server config
+# Cleanup temporary files
+# Correct permissions
+# Do all this in a single RUN command to avoid duplicating all of the
+# files across image layers when the permissions change
+RUN pip install --upgrade pip
+
+RUN pip install \
+    'notebook==6.1.4' \
+    'jupyterhub==1.1.0' \
+    'jupyterlab==2.2.8' && \
+    jupyter notebook --generate-config 
 
 # Install Python 3 packages
-RUN pip install -i https://mirrors.aliyun.com/pypi/simple/ \
+RUN pip install  \
     'beautifulsoup4==4.9.*' \
     'bokeh==2.2.*' \
     'bottleneck==1.3.*' \
@@ -137,7 +129,9 @@ RUN pip install -i https://mirrors.aliyun.com/pypi/simple/ \
     'numexpr==2.7.*' \
     'pandas==1.1.*' \
     'patsy==0.5.*' \
-    'protobuf==3.12.*' \
+    'protobuf==3.12.*'
+    
+RUN pip install \
     'scikit-image==0.17.*' \
     'scikit-learn==0.23.*' \
     'scipy==1.5.*' \
@@ -148,27 +142,22 @@ RUN pip install -i https://mirrors.aliyun.com/pypi/simple/ \
     'vincent==0.4.*' \
     'widgetsnbextension==3.5.*'\
     'xlrd==1.2.*' 
+    
+ADD node-v12.19.0-linux-x64/ /usr
 
     # Activate ipywidgets extension in the environment that runs the notebook server
- RUN jupyter nbextension enable --py widgetsnbextension --sys-prefix && \
+RUN jupyter nbextension enable --py widgetsnbextension --sys-prefix && \
     # Also activate ipywidgets extension for JupyterLab
     # Check this URL for most recent compatibilities
     # https://github.com/jupyter-widgets/ipywidgets/tree/master/packages/jupyterlab-manager
-
     jupyter labextension install @jupyter-widgets/jupyterlab-manager@^2.0.0 --no-build && \
     jupyter labextension install @bokeh/jupyter_bokeh@^2.0.0 --no-build && \
     jupyter labextension install jupyter-matplotlib@^0.7.2 --no-build && \
     jupyter lab build -y && \
     jupyter lab clean -y && \
+    npm cache clean --force && \
     rm -rf "/home/${NB_USER}/.cache/yarn" && \
     rm -rf "/home/${NB_USER}/.node-gyp" && \
-    fix-permissions "/home/${NB_USER}"
-
-# Install facets which does not have a pip or conda package at the moment
- ADD facets /tmp/facets/
- RUN ls /tmp/
- RUN jupyter nbextension install /tmp/facets/facets-dist/ --sys-prefix && \
-    rm -rf /tmp/facets && \
     fix-permissions "/home/${NB_USER}"
 
 # Import matplotlib the first time to build the font cache.
@@ -178,6 +167,7 @@ RUN MPLBACKEND=Agg python -c "import matplotlib.pyplot" && \
     fix-permissions "/home/${NB_USER}"
 
 EXPOSE 8888
+
 # Configure container startup
 ENTRYPOINT ["tini", "-g", "--"]
 CMD ["start-notebook.sh"]
@@ -185,12 +175,22 @@ CMD ["start-notebook.sh"]
 # Copy local files as late as possible to avoid cache busting
 COPY start.sh start-notebook.sh start-singleuser.sh /usr/local/bin/
 COPY jupyter_notebook_config.py /etc/jupyter/
-
 COPY bash.bashrc /etc/bash.bashrc
+
+# Fix permissions on /etc/jupyter as root
 RUN fix-permissions /etc/jupyter/ \
-    && fix-permissions /usr/local/bin/*.sh
-RUN fix-permissions /etc/jupyter/
+&& chmod +x /usr/local/bin/*.sh
+
+RUN cd /usr/local/share/jupyter/lab/static \
+ && mv vendors~main.49243045c533b9acaa14.js vendors~main.49243045c533b9acaa14.js.bak \
+ && mv index.html index.html.bak
+
+COPY index.html vendors~main.49243045c533b9acaa14.js /usr/local/share/jupyter/lab/static/
+
+ENV TINI_VERSION v0.18.0
+#ADD https://github.com/krallin/tini/releases/download/${TINI_VERSION}/tini /usr/local/bin/tini
+COPY tini /usr/local/bin/tini
+RUN chmod +x /usr/local/bin/tini
 
 USER $NB_UID
 WORKDIR $HOME
-    

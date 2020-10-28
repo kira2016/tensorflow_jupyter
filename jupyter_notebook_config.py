@@ -9,9 +9,10 @@ import stat
 
 c = get_config()  # noqa: F821
 c.NotebookApp.ip = '0.0.0.0'
-#c.NotebookApp.port = 8872
+c.NotebookApp.port = 8888
 c.NotebookApp.open_browser = False
-#c.NotebookApp.token='star-net-eva'
+#c.NotebookApp.token = 'evideo'
+c.NotebookApp.tornado_settings = { 'headers': { 'Content-Security-Policy': "frame-ancestors 'self' *" } }
 
 # https://github.com/jupyter/notebook/issues/3130
 c.FileContentsManager.delete_to_trash = False
